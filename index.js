@@ -1,8 +1,10 @@
 const express = require("express");
+const cors = require("cors");
 const bodyParser = require("body-parser");
-const uuid = require("uuid");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 
 let entities = {};
@@ -46,9 +48,10 @@ app.get("/elements/:id", (req, res) => {
 app.post("/elements", (req, res) => {
   console.log("POST /elements");
   const newEntity = req.body;
-  const entityId = uuid.v4(); // Generate a unique ID
+  const entityId = uuidv4();
+  console.log({ entityId });
   newEntity.id = entityId;
-  entities[entityId] = newEntity;
+  entities[entityId] = { id: entityId, ...newEntity };
   res.status(201).json(newEntity);
 });
 
@@ -56,20 +59,22 @@ app.post("/elements", (req, res) => {
 app.put("/elements/:id", (req, res) => {
   console.log("PUT /elements/:id");
   const entityId = req.params.id;
-  const updatedEntity = req.body;
+  const entityChanges = req.body;
 
   // Ensure id is not modified
-  if (updatedEntity.id && updatedEntity.id !== entityId) {
+  if (entityChanges.id && entityChanges.id !== entityId) {
     res.status(400).json({ message: "Cannot modify entity ID" });
     return;
   }
 
   if (!entities[entityId]) {
+    res.header("Access-Control-Allow-Origin", "*");
     res.status(404).json({ message: "Entity not found" });
   } else {
     // Exclude modifying the id field
-    updatedEntity.id = entityId;
-    entities[entityId] = updatedEntity;
+    entityChanges.id = entityId;
+    const updatedEntity = Object.assign(entities[entityId], entityChanges);
+    res.header("Access-Control-Allow-Origin", "*");
     res.json(updatedEntity);
   }
 });
